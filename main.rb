@@ -3,23 +3,42 @@ require './song'
 require 'fileutils'
 
 class MusicSorter
-  attr_reader :dir, :zip_output, :song_output
+  attr_reader :dir,:zip_input, :zip_output, :song_output, :trash
 
   def initialize
-    @dir = '/home/dan/Coding/musicSorter/'
-    @zip_output = @dir + 'output/'
+    @dir = '/media/dan/HardDisk/'
+    @zip_input = @dir + 'music_zip_files/'
+    @zip_output = @dir + 'zip_output/'
+    @trash = @dir + 'trash/'
     system 'mkdir', '-p', @zip_output
-    @song_output = @dir + 'music/'
+    @song_output = @dir + 'Music/'
     system 'mkdir', '-p', @song_output
   end
 
-  def unzip(zipfile_name = 'Lecrae.zip')
-    Zip::File.open(dir + zipfile_name) do |zipfile|
+  def unzip_all
+    files = Dir.glob("#{zip_input}/**/*\.zip")
+    files.each do |file|
+      puts 'Unzipping ' + file
+      unzip(file)
+    end
+  end
+
+  def unzip(zipfile_name)
+    Zip::File.open(zipfile_name) do |zipfile|
       zipfile.each do  |entry|
-        puts "Extracting #{entry.name}"
-        entry.extract(zip_output + entry.name)
+        next unless entry.name.include? 'mp3'
+        begin
+          sp = entry.name.rindex('/') + 1
+          start_point = sp ? sp : 0
+          song_name = entry.name[start_point..-1]
+          entry.extract(zip_output + song_name)
+          # puts "Extracting #{song_name}"
+        rescue Errno::ENOENT
+          puts "Problem extracting file - #{entry.name}"
+        end
       end
     end
+    FileUtils.mv(zipfile_name, trash)
   end
 
   def rearrange
@@ -30,10 +49,16 @@ class MusicSorter
   end
 
   def move(file)
+
     song = Song.new(file)
-    full_path = song_output + song.artist + '/' + song.album_name
-    full_path_with_file = full_path + '/' + song.file_name
-    system 'mkdir', '-p', full_path
+    begin
+      full_path = song_output + song.artist + '/' + song.album_name
+      full_path_with_file = full_path + '/' + song.file_name
+      system 'mkdir', '-p', full_path
+    rescue
+      puts "Incorrect file name - #{file}"
+      return
+    end
     begin
       FileUtils.mv(file, full_path_with_file)
     rescue Errno::ENOENT
@@ -43,6 +68,7 @@ class MusicSorter
 end
 
 ms = MusicSorter.new
-ms.unzip('Lecrae.zip')
-# ms.move('/home/dan/Coding/musicSorter/output/extracted/Lecrae/Anomaly/01 Outsiders.mp3')
+# ms.unzip('takeout-20201207T151935Z-002.zip')
+# ms.move('/home/dan/Coding/musicSorter/output/Andrew Bird - Armchair Apocrypha - Cataracts.mp3')
+ms.unzip_all
 ms.rearrange

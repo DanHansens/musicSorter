@@ -9,7 +9,7 @@ class MusicSorter
   attr_reader :dir, :zip_input, :zip_output, :song_output, :trash
 
   def initialize
-    @dir = '/media/dan/HardDisk/'
+    @dir = '/mnt/Plutarch/'
     @zip_input = "#{@dir}music_zip_files/"
     @zip_output = "#{@dir}zip_output/"
     @trash = "#{@dir}trash/"
@@ -41,8 +41,8 @@ class MusicSorter
     sp = entry.name.rindex('/') + 1
     start_point = sp || 0
     song_name = entry.name[start_point..-1]
-    entry.extract(zip_output + song_name)
     # puts "Extracting #{song_name}"
+    entry.extract(zip_output + song_name)
   rescue Errno::ENOENT
     puts "Problem extracting file - #{entry.name}"
   end
@@ -58,11 +58,18 @@ class MusicSorter
     full_path = "#{song_output}#{song.artist}/#{song.album_name}"
     full_path_with_file = "#{full_path}/#{song.file_name}"
     system 'mkdir', '-p', full_path
-    FileUtils.mv(file, full_path_with_file)
-  rescue Errno::ENOENT
+    FileUtils.mv("\'#{song.file_path}\'", "\'#{full_path_with_file}\'")
+  rescue Errno::ENOENT => e
     puts "Problem moving file - #{full_path_with_file}"
-  rescue StandardError
-    puts "Incorrect file name - #{file}"
+    puts e.message
+    add_to_command_file(song.file_path, full_path_with_file)
+  rescue ArgumentError => e
+    puts e.message
+  end
+
+  def add_to_command_file(orig, dest)
+    file = 'commands.txt'
+    File.write(file, "mv \'#{orig}\' \'#{dest}\'\n", mode: 'a')
   end
 end
 

@@ -14,7 +14,7 @@ class Song
   end
 
   def title
-    tag.title
+    tag.title.gsub('/', '-').gsub("\'", "\\\'")
   end
 
   def album_name
@@ -31,7 +31,7 @@ class Song
   end
 
   def file_name
-    "#{track_num} #{tag.title}.mp3"
+    "#{track_num} #{title}.mp3"
   end
 
   def track_num
